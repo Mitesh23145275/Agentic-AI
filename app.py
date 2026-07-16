@@ -255,7 +255,7 @@ app = graph.compile()
 # Chat Loop
 # ==========================================
 
-if __name__ == "__main__":
+"""if __name__ == "__main__":
     print("=" * 60)
     print("LangGraph AI Agent")
     print("Type 'exit' to quit")
@@ -277,4 +277,4 @@ if __name__ == "__main__":
         )
 
         print("\nBot :")
-        print(result["answer"])
+        print(result["answer"])"""
