@@ -1,7 +1,7 @@
-langgraph
-langchain
-langchain-google-genai
-langchain-openai
-langchain-community
+fastapi
+uvicorn[standard]
 python-dotenv
+pydantic
+langgraph
+requests
 pypdf

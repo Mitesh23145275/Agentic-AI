@@ -1,92 +1,84 @@
-# LangGraph Agent Setup
+# Resume Chatbot — LangGraph Multi-Agent + FastAPI
 
-This project is a simple LangGraph-based chatbot that can run with Gemini, OpenAI, or a local Ollama model.
+A resume-analysis chatbot built with a multi-node LangGraph pipeline
+(Resume Reader → Intent Classifier → Retriever → Response Generator),
+served through FastAPI, with a plain HTML/CSS/JS frontend.
 
-## Requirements
+## Folder structure
 
-- Python 3.9+
-- One of the following:
-  - a Google API key with access to Gemini, or
-  - an OpenAI API key, or
-  - Ollama installed locally
-
-## Setup on Windows
-
-1. Open Command Prompt or PowerShell in the project folder.
-2. Create and activate a virtual environment:
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+```
+resume_chatbot/
+├── app/
+│   ├── main.py                # FastAPI app + routes (/chat, /health)
+│   ├── config.py              # env vars & provider selection
+│   ├── models.py              # Pydantic request/response schemas
+│   ├── graph/
+│   │   ├── state.py           # AgentState (shared "notebook")
+│   │   ├── nodes.py           # resume_extraction, intent_classifier, retriever, chatbot
+│   │   └── builder.py         # build_graph() + run_agent()
+│   ├── llm/
+│   │   └── providers.py       # build_llm() for Gemini/OpenAI + Ollama REST call
+│   └── utils/
+│       └── pdf_reader.py      # extract_resume_text_from_pdf()
+├── data/
+│   └── sample.pdf             # put your resume PDF here
+├── frontend/
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
+├── tests/
+│   └── test_agent.py
+├── .env.example
+├── requirements.txt
+├── run.py                     # start the FastAPI server
+└── run_cli.py                 # terminal chat loop
 ```
 
-If PowerShell blocks script execution, run:
+## Why this structure
 
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
+- **`graph/state.py`** — the shared state ("notebook") every node reads/writes, matching Part 6 of the workshop.
+- **`graph/nodes.py`** — one function per node, one responsibility each (Part 7).
+- **`graph/builder.py`** — wires nodes into edges, i.e. the routing (Part 8).
+- **`llm/providers.py`** — isolates the provider-specific code (Gemini/OpenAI/Ollama) so `nodes.py` doesn't need to know which one is active.
+- **`app/main.py`** — only routes; no business logic, so it's trivial to add more endpoints later (e.g. `/upload-resume`).
+- **`frontend/`** — served directly by FastAPI's `StaticFiles`, so one `uvicorn` process runs both API and UI.
 
-3. Install the dependencies:
+This mirrors the Day 10 architecture diagram: `FastAPI → LangGraph → [PDF Reader, Intent Agent, ...] → Gemini → Final Answer`.
 
-```powershell
-pip install --upgrade pip
+## Setup
+
+```bash
+cd resume_chatbot
+python -m venv venv
+source venv/bin/activate        # venv\Scripts\activate on Windows
 pip install -r requirements.txt
+cp .env.example .env            # then fill in your API key(s)
 ```
 
-4. Create a `.env` file in the project root and add one of the following configurations:
+Place your resume PDF at `data/sample.pdf` (or pass `resume_path` in the request).
 
-### Option 1: Use Gemini
+## Run the API + frontend
 
-```env
-GOOGLE_API_KEY=your_google_api_key_here
-LLM_PROVIDER=gemini
+```bash
+python run.py
 ```
 
-### Option 2: Use OpenAI
+Visit `http://localhost:8000` for the chat UI, or call the API directly:
 
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-LLM_PROVIDER=openai
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Summarize this candidate's experience"}'
 ```
 
-### Option 3: Use Ollama locally
+## Run the terminal chat loop instead
 
-```env
-LLM_PROVIDER=ollama
-USE_OLLAMA=1
-OLLAMA_MODEL=mistral:latest
-OLLAMA_BASE_URL=http://127.0.0.1:11434
+```bash
+python run_cli.py
 ```
 
-If you use Ollama, install it first and run:
+## Run tests
 
-```powershell
-ollama pull mistral:latest
-ollama serve
+```bash
+pytest tests/
 ```
-
-You can also optionally set:
-
-```env
-GEMINI_MODEL=gemini-2.0-flash
-OPENAI_MODEL=gpt-4o-mini
-```
-
-5. Run the app:
-
-```powershell
-python app.py
-```
-
-## Usage
-
-- The app will start a chat loop in the terminal.
-- Type your question and press Enter.
-- Type `exit` to quit the program.
-- If you place a resume PDF named `sample.pdf` in the project root, the app will extract its text in a dedicated resume node before answering your question.
-
-## Troubleshooting
-
-- If you see an error about `GOOGLE_API_KEY`, make sure the `.env` file exists and contains a valid key.
-- If you see an Ollama error, make sure Ollama is installed, the server is running, and the selected model has been pulled.
-- If dependencies fail to install, make sure your Python environment is active and `pip` is up to date.
